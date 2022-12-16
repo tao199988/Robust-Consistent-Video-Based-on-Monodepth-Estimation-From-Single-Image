@@ -22,7 +22,7 @@ class MidasV2Model(DepthModel):
         super().__init__()
 
         model_file = MIDAS_WEIGHTS_PATH
-        # CPU
+
         if support_cpu:
             # Allow the model to run on CPU when GPU is not available.
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -371,13 +371,12 @@ class DepthFineTuner:
         torch.backends.cudnn.benchmark = True
 
         # Only enable back-propagation for the PCA realted parameters if specified.
-        # Unused
-        # if self.params.model_type == "midas2_pca":
-        #     for name, param in self.model.named_parameters():
-        #         if name == "model.scale_params" or name == "model.shift_params":
-        #             param.requires_grad = True
-        #         else:
-        #             param.requires_grad = False
+        if self.params.model_type == "midas2_pca":
+            for name, param in self.model.named_parameters():
+                if name == "model.scale_params" or name == "model.shift_params":
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
 
         # Only cover tunable PCA parameters in loss computation.
         criterion = JointLoss(
@@ -396,8 +395,7 @@ class DepthFineTuner:
             writer = SummaryWriter(log_dir=log_dir)
 
         # Only include tunable PCA parameters in the optimizer if specified.
-        
-        if self.params.model_type == "midas2_pca": # Unused
+        if self.params.model_type == "midas2_pca":
             opt = optimizer.create(
                 self.params.optimizer,
                 filter(lambda p: p.requires_grad, self.model.parameters()),
