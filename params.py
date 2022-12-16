@@ -193,7 +193,7 @@ class Video3dParamsParser:
         DepthFineTuningParams.add_arguments(self.parser)
         self.parser.add_argument(
             "--model_type", type=str, choices=get_depth_model_list(),
-            default="adelai"
+            default="midas2"
         )
         self.parser.add_argument(
             "--frame_range", default="",
