@@ -175,7 +175,7 @@ class DatasetProcessor:
         frame_range = FrameRange(
             frame_range=self.params.frame_range.set, num_frames=self.video.frame_count
         )
-
+        
         # if self.params.recon == "colmap":
         #     try:
         #         print_banner("Scale calibration")
