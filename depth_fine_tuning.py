@@ -2,7 +2,10 @@
 # Copyright 2004-present Facebook. All Rights Reserved.
 
 # Suppress several verbose warnings for easier debugging.
-import warnings  # isort:skip
+from turtle import color
+import warnings
+
+from cv2 import add, imread  # isort:skip
 
 # warnings.simplefilter("ignore", ResourceWarning)
 # warnings.simplefilter("ignore", DeprecationWarning)
@@ -21,6 +24,11 @@ import cv2
 import numpy as np
 import torch
 import torchvision.utils as vutils
+#add
+import torchvision.transforms as transforms
+from Adel_lib.net_tools import load_ckpt
+import matplotlib.pyplot as plt
+
 from tensorboard.compat.tensorflow_stub.io.gfile import register_filesystem
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -55,6 +63,10 @@ class DepthFineTuningParams:
     @staticmethod
     def add_arguments(parser):
         parser = LossParams.add_arguments(parser)
+
+        #add
+        parser.add_argument('--load_ckpt', default='./res50.pth', help='Checkpoint path to load')
+        parser.add_argument('--backbone', default='resnext101', help='Checkpoint path to load')
 
         parser.add_argument(
             "--optimizer",
@@ -202,7 +214,23 @@ def make_tag(params, exp_tag="short"):
             + f"_O{params.optimizer.lower()}"
             + f"_S{params.scaling}"
         )
-
+def scale_torch(img):
+    """
+    Scale the image and output it in torch.tensor.
+    :param img: input rgb is in shape [H, W, C], input depth/disp is in shape [H, W]
+    :param scale: the scale factor. float
+    :return: img. [C, H, W]
+    """
+    if len(img.shape) == 2:
+        img = img[np.newaxis, :, :]
+    if img.shape[2] == 3:
+        transform = transforms.Compose([transforms.ToTensor(),
+    	                                transforms.Normalize((0.485, 0.456, 0.406) , (0.229, 0.224, 0.225) )])
+        img = transform(img)
+    else:
+        img = img.astype(np.float32)
+        img = torch.from_numpy(img)
+    return img
 
 class DepthFineTuner:
     def __init__(self, range_dir, frames, base_dir, params):
@@ -219,79 +247,136 @@ class DepthFineTuner:
             self.checkpoints_dir = pjoin(self.out_dir, "checkpoints")
             os.makedirs(self.checkpoints_dir, exist_ok=True)
 
-        model = get_depth_model(params.model_type)
+        model = get_depth_model(params.model_type,params.backbone)
         self.model = model()
 
         self.reference_disparity = {}
 
     def save_depth(self, dir: str = None, frames=None):
         save_depth_start_time = time.perf_counter()
-
+        
         if dir is None:
             dir = self.depth_dir
-
         if frames is None:
             frames = self.frames
-
-        color_fmt = pjoin(self.base_dir, "color_down", "frame_{:06d}.raw")
-        depth_dir = pjoin(dir, "depth")
-        depth_fmt = pjoin(depth_dir, "frame_{:06d}")
+        
+        #color_fmt = pjoin(self.base_dir, "color_down", "frame_{:06d}.raw") 
+        depth_dir = pjoin(dir,"depth") #content\family_run_output\depth_midas2\depth
+        depth_fmt = pjoin(depth_dir,"frame_{:06d}")
 
         print(f"Saving depth to '{dir}'...")
         print(f"Current 'frames':\n {frames}")
 
         num_gpus = torch.cuda.device_count()
         batch_size = num_gpus
-        dataset = VideoFrameDataset(color_fmt, frames)
-        data_loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=False, num_workers=4
-        )
 
         torch.backends.cudnn.enabled = True
         torch.backends.cudnn.benchmark = True
 
         self.model.eval()
+        load_ckpt(self.params.load_ckpt, self.model, None, None)
+        self.model.cuda()
 
-        os.makedirs(depth_dir, exist_ok=True)
-        for data in data_loader:
+        image_dir = pjoin(self.base_dir,"color_full","frame_{:06d}.png")
+        imgs_list = os.listdir(image_dir)
+        imgs_list.sort()
+        imgs_path = [os.path.join(image_dir, i)for i in imgs_list]
+        
+        for i,v in enumerate(imgs_path):
+            print('processing (%06d)-th image... %s' % (i, v))
+            rgb  = cv2.imread(v)
+            rgb_c = rgb[:,:,::-1].copy()
+            gt_depth = None
+            A_resize = cv2.resize(rgb_c,(448,448))
+            rgb_half = cv2.resize(rgb, (rgb.shape[1]//2, rgb.shape[0]//2), interpolation=cv2.INTER_LINEAR)
 
-            # Skip this batch if all frames are out of range.
-            if frames is not None and not any(i in frames for i in data[1]["frame_id"]):
-                continue
+            img_torch = scale_torch(A_resize)[None, :, :, :]
+            pred_depth = self.model.inference(img_torch).cpu().numpy().squeeze()
+            pred_depth_ori = cv2.resize(pred_depth, (rgb.shape[1], rgb.shape[0]))
+            img_name = v.split('/')[-1]
+            img_name = "frame_"+img_name[0].zfill(6)
 
-            data = to_device(data)
-            stacked_images, metadata = data
-
-            depth_batch = self.model.forward(stacked_images, metadata)
-            batch_size, _, _ = depth_batch.shape
-
-            depth_batch = depth_batch.detach().cpu().numpy().squeeze()
-            inv_depth_batch = 1.0 / depth_batch
-
-            for i in range(batch_size):
-                if batch_size > 1:
-                    inv_depth = inv_depth_batch[i, :, :].squeeze()
-                else:
-                    inv_depth = inv_depth_batch
-                frame_id = metadata["frame_id"][i]
-
-                if frames is None or frame_id in frames:
-                    image_io.save_raw_float32_image(
-                        depth_fmt.format(frame_id) + ".raw", inv_depth
-                    )
-
-        if self.params.save_depth_visualization:
-            print(f"Visualizing depth dir: {depth_dir}...")
-            with SuppressedStdout():
-                visualization.visualize_depth_dir(
-                    src_dir=depth_dir, dst_dir=depth_dir, force=True
-                )
+            plt.imsave(os.path.join(depth_dir,img_name+".png"), pred_depth_ori, cmap='rainbow')
+            image_io.save_raw_float32_image(img_name + ".raw", pred_depth_ori)
 
         save_depth_end_time = time.perf_counter()
         save_depth_duration = save_depth_end_time - save_depth_start_time
         print(
             f"Complete saving depth for pose optimization in {save_depth_duration:.2f}s"
         )
+
+        #dataset = VideoFrameDataset(color_fmt, frames) # frames path = /content/family_run_output/color_full
+
+
+        
+    # def save_depth(self, dir: str = None, frames=None):
+    #     save_depth_start_time = time.perf_counter()
+
+    #     if dir is None:
+    #         dir = self.depth_dir
+
+    #     if frames is None:
+    #         frames = self.frames
+
+    #     color_fmt = pjoin(self.base_dir, "color_down", "frame_{:06d}.raw")
+    #     depth_dir = pjoin(dir, "depth")
+    #     depth_fmt = pjoin(depth_dir, "frame_{:06d}")
+
+    #     print(f"Saving depth to '{dir}'...")
+    #     print(f"Current 'frames':\n {frames}")
+
+    #     num_gpus = torch.cuda.device_count()
+    #     batch_size = num_gpus
+    #     dataset = VideoFrameDataset(color_fmt, frames)
+    #     data_loader = DataLoader(
+    #         dataset, batch_size=batch_size, shuffle=False, num_workers=4
+    #     )
+
+    #     torch.backends.cudnn.enabled = True
+    #     torch.backends.cudnn.benchmark = True
+
+    #     self.model.eval()
+
+    #     os.makedirs(depth_dir, exist_ok=True)
+    #     for data in data_loader:
+
+    #         # Skip this batch if all frames are out of range.
+    #         if frames is not None and not any(i in frames for i in data[1]["frame_id"]):
+    #             continue
+
+    #         data = to_device(data)
+    #         stacked_images, metadata = data
+
+    #         depth_batch = self.model.forward(stacked_images, metadata)
+    #         batch_size, _, _ = depth_batch.shape
+
+    #         depth_batch = depth_batch.detach().cpu().numpy().squeeze()
+    #         inv_depth_batch = 1.0 / depth_batch
+
+    #         for i in range(batch_size):
+    #             if batch_size > 1:
+    #                 inv_depth = inv_depth_batch[i, :, :].squeeze()
+    #             else:
+    #                 inv_depth = inv_depth_batch
+    #             frame_id = metadata["frame_id"][i]
+
+    #             if frames is None or frame_id in frames:
+    #                 image_io.save_raw_float32_image(
+    #                     depth_fmt.format(frame_id) + ".raw", inv_depth
+    #                 )
+
+    #     if self.params.save_depth_visualization:
+    #         print(f"Visualizing depth dir: {depth_dir}...")
+    #         with SuppressedStdout():
+    #                 visualization.visualize_depth_dir(
+    #                 src_dir=depth_dir, dst_dir=depth_dir, force=True
+    #             )
+
+    #     save_depth_end_time = time.perf_counter()
+    #     save_depth_duration = save_depth_end_time - save_depth_start_time
+    #     print(
+    #         f"Complete saving depth for pose optimization in {save_depth_duration:.2f}s"
+    #     )
 
     def load_reference_disparity(self, frame):
         if frame not in self.reference_disparity:
