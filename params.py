@@ -245,16 +245,16 @@ class Video3dParamsParser:
         #         self.params.matcher = 'sequential'
 
         # Resolve unspecified parameters
-        model = get_depth_model(self.params.model_type)
+        model = get_depth_model(self.params.model_type,self.params.backbone)
 
-        if self.params.align <= 0:
-            self.params.align = model.align
+        # if self.params.align <= 0:
+        #     self.params.align = model.align
 
-        if self.params.learning_rate <= 0:
-            self.params.learning_rate = model.learning_rate
+        # if self.params.learning_rate <= 0:
+        #     self.params.learning_rate = model.learning_rate
 
-        if self.params.lambda_static_disparity < 0:
-            self.params.lambda_static_disparity = model.lambda_view_baseline
+        # if self.params.lambda_static_disparity < 0:
+        #     self.params.lambda_static_disparity = model.lambda_view_baseline
 
         # Multiply batch size by number of available GPUs.
         num_gpus = torch.cuda.device_count()
