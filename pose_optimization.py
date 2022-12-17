@@ -205,7 +205,7 @@ class PoseOptimizer:
         params.spatialXformDesc.spatialType = SpatialXformType.Identity
         params.spatialXformDesc.valueXform = ValueXformType.Scale
         processor.process(params)
-
+        
         processor.normalizeDepth(params, self.flow_constraints)
 
         # Now optimize poses and depth transforms jointly.

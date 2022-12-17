@@ -3,6 +3,7 @@
 
 # Suppress several verbose warnings for easier debugging.
 from turtle import color
+from typing_extensions import Self
 import warnings
 
 from cv2 import add, imread  # isort:skip
@@ -63,10 +64,6 @@ class DepthFineTuningParams:
     @staticmethod
     def add_arguments(parser):
         parser = LossParams.add_arguments(parser)
-
-        #add
-        parser.add_argument('--load_ckpt', default='./res50.pth', help='Checkpoint path to load')
-        parser.add_argument('--backbone', default='resnext101', help='Checkpoint path to load')
 
         parser.add_argument(
             "--optimizer",
@@ -247,8 +244,8 @@ class DepthFineTuner:
             self.checkpoints_dir = pjoin(self.out_dir, "checkpoints")
             os.makedirs(self.checkpoints_dir, exist_ok=True)
 
-        model = get_depth_model(params.model_type,params.backbone)
-        self.model = model()
+        self.model = get_depth_model(params.model_type,params.backbone)
+        #self.model = model()
 
         self.reference_disparity = {}
 
@@ -263,6 +260,7 @@ class DepthFineTuner:
         #color_fmt = pjoin(self.base_dir, "color_down", "frame_{:06d}.raw") 
         depth_dir = pjoin(dir,"depth") #content\family_run_output\depth_midas2\depth
         depth_fmt = pjoin(depth_dir,"frame_{:06d}")
+        os.makedirs(depth_dir, exist_ok=True)
 
         print(f"Saving depth to '{dir}'...")
         print(f"Current 'frames':\n {frames}")
@@ -277,7 +275,7 @@ class DepthFineTuner:
         load_ckpt(self.params.load_ckpt, self.model, None, None)
         self.model.cuda()
 
-        image_dir = pjoin(self.base_dir,"color_full","frame_{:06d}.png")
+        image_dir = pjoin(self.base_dir,"color_down_png")
         imgs_list = os.listdir(image_dir)
         imgs_list.sort()
         imgs_path = [os.path.join(image_dir, i)for i in imgs_list]
@@ -293,11 +291,12 @@ class DepthFineTuner:
             img_torch = scale_torch(A_resize)[None, :, :, :]
             pred_depth = self.model.inference(img_torch).cpu().numpy().squeeze()
             pred_depth_ori = cv2.resize(pred_depth, (rgb.shape[1], rgb.shape[0]))
+            #pred_depth_down = cv2.resize(pred_depth_ori,(224,384))
             img_name = v.split('/')[-1]
-            img_name = "frame_"+img_name[0].zfill(6)
-
+            img_name = img_name.split('.')[0]
+            raw_name = depth_dir+'/'+img_name
             plt.imsave(os.path.join(depth_dir,img_name+".png"), pred_depth_ori, cmap='rainbow')
-            image_io.save_raw_float32_image(img_name + ".raw", pred_depth_ori)
+            image_io.save_raw_float32_image(raw_name + ".raw", pred_depth_ori)
 
         save_depth_end_time = time.perf_counter()
         save_depth_duration = save_depth_end_time - save_depth_start_time

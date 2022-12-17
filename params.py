@@ -195,6 +195,8 @@ class Video3dParamsParser:
             "--model_type", type=str, choices=get_depth_model_list(),
             default="midas2"
         )
+        self.parser.add_argument('--load_ckpt', default='./res50.pth', help='Checkpoint path to load')
+        self.parser.add_argument('--backbone', default='resnext101', help='Checkpoint path to load')
         self.parser.add_argument(
             "--frame_range", default="",
             type=frame_range.parse_frame_range,

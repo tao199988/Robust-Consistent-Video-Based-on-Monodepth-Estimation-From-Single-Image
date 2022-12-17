@@ -7,6 +7,7 @@ import sys
 
 sys.path.append(osp.abspath(__file__))
 sys.path.append(osp.join(osp.dirname(__file__), "lib/build"))
+sys.path.append(osp.join("/content/cvd2/Adel_lib"))
 print(sys.path)
 
 from params import Video3dParamsParser
