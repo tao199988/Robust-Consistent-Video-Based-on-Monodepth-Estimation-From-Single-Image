@@ -29,6 +29,7 @@ import torchvision.utils as vutils
 import torchvision.transforms as transforms
 from Adel_lib.net_tools import load_ckpt
 import matplotlib.pyplot as plt
+import csv
 
 from tensorboard.compat.tensorflow_stub.io.gfile import register_filesystem
 from torch.utils.data import DataLoader
@@ -43,7 +44,7 @@ from pose_optimization import PoseOptimizer
 from utils import image_io, visualization
 from utils.helpers import SuppressedStdout
 from utils.torch_helpers import to_device
-
+from PIL import Image as im
 
 def get_tensorboard_prompt(log_dir: str) -> str:
     """
@@ -295,7 +296,18 @@ class DepthFineTuner:
             img_name = v.split('/')[-1]
             img_name = img_name.split('.')[0]
             raw_name = depth_dir+'/'+img_name
+            csvpath = os.path.join(depth_dir,img_name+".csv")
+            with open(csvpath,'w',newline='') as csvfile:
+              writer = csv.writer(csvfile)
+              for i in range(0,pred_depth_ori.shape[0]):
+                writearr = []
+                for j in range(0,pred_depth_ori.shape[1]):
+                  writearr.append(pred_depth_ori[i,j])
+                writer.writerow(writearr)
+              
+              
             plt.imsave(os.path.join(depth_dir,img_name+".png"), pred_depth_ori, cmap='rainbow')
+            plt.imsave(os.path.join(depth_dir,img_name+"gray.png"), pred_depth_ori, cmap='gray')
             image_io.save_raw_float32_image(raw_name + ".raw", pred_depth_ori)
 
         save_depth_end_time = time.perf_counter()
