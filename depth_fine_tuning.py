@@ -29,6 +29,7 @@ import torchvision.utils as vutils
 import torchvision.transforms as transforms
 from Adel_lib.net_tools import load_ckpt
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import csv
 
 from tensorboard.compat.tensorflow_stub.io.gfile import register_filesystem
@@ -292,11 +293,13 @@ class DepthFineTuner:
             img_torch = scale_torch(A_resize)[None, :, :, :]
             pred_depth = self.model.inference(img_torch).cpu().numpy().squeeze()
             pred_depth_ori = cv2.resize(pred_depth, (rgb.shape[1], rgb.shape[0]))
-            #pred_depth_down = cv2.resize(pred_depth_ori,(224,384))
+
             img_name = v.split('/')[-1]
             img_name = img_name.split('.')[0]
             raw_name = depth_dir+'/'+img_name
             csvpath = os.path.join(depth_dir,img_name+".csv")
+            
+            pred_depth_ori = pred_depth_ori.max() - pred_depth_ori
             with open(csvpath,'w',newline='') as csvfile:
               writer = csv.writer(csvfile)
               for i in range(0,pred_depth_ori.shape[0]):
@@ -304,9 +307,8 @@ class DepthFineTuner:
                 for j in range(0,pred_depth_ori.shape[1]):
                   writearr.append(pred_depth_ori[i,j])
                 writer.writerow(writearr)
-              
-              
-            plt.imsave(os.path.join(depth_dir,img_name+".png"), pred_depth_ori, cmap='rainbow')
+
+            plt.imsave(os.path.join(depth_dir,img_name+".png"), pred_depth_ori, cmap = 'magma')
             plt.imsave(os.path.join(depth_dir,img_name+"gray.png"), pred_depth_ori, cmap='gray')
             image_io.save_raw_float32_image(raw_name + ".raw", pred_depth_ori)
 
