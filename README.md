@@ -1,9 +1,9 @@
 # Robust Consistent Video Based on Monodepth Estimation From Single Image
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1vY9XJKjytkuXQqnj3lSn1BUb6cDKynfv?usp=share_link)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1vY9XJKjytkuXQqnj3lSn1BUb6cDKynfv?usp=share_link)\
 This repository implements Robust Consistent Video Based on Monodepth Estimation From Single Image.
-[Report](https://github.com/tao199988/Robust-Consistent-Video-Based-on-Monodepth-Estimation-From-Single-Image/blob/main/Report.pdf)
-[Colab](https://colab.research.google.com/drive/1vY9XJKjytkuXQqnj3lSn1BUb6cDKynfv?usp=share_link)
+### [Report](https://github.com/tao199988/Robust-Consistent-Video-Based-on-Monodepth-Estimation-From-Single-Image/blob/main/Report.pdf)
+### [Colab](https://colab.research.google.com/drive/1vY9XJKjytkuXQqnj3lSn1BUb6cDKynfv?usp=share_link)
 ## Installation
 Please refer to the colab notebook to install the dependencies.
 
