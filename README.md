@@ -12,7 +12,7 @@ All the necessary steps are in the colab for sample demo.
 
 ## Result
 From top to the bottom are initial input video, initial depth estimation, final depth estimation based on our method.
-![](https://i.imgur.com/HRBhiOz.gif)/
+![](https://i.imgur.com/HRBhiOz.gif)
 
 
 ## Acknowledgements
