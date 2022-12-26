@@ -11,7 +11,7 @@ Please refer to the colab notebook to install the dependencies.
 All the necessary steps are in the colab for sample demo.
 
 ## Result
-![](https://i.imgur.com/HRBhiOz.gif)!
+![](https://i.imgur.com/HRBhiOz.gif)\
 From top to the bottom are initial input video, initial depth estimation, final depth estimation based on our method.
 
 ## Acknowledgements
