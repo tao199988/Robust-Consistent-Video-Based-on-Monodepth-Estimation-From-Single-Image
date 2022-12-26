@@ -10,11 +10,11 @@ from typing import List
 
 
 def get_depth_model_list() -> List[str]:
-    return ["midas2"]
+    return ["Adelai"]
 
 
 def get_depth_model(type: str,backbone: str) -> DepthModel:
-    if type == "midas2":
+    if type == "Adelai":
         return RelDepthModel(backbone=backbone)
     else:
         raise ValueError(f"Unsupported model type '{type}'.")
